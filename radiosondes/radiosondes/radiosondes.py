@@ -102,7 +102,7 @@ class RS_calcP(object):
         the offset string or object representing target conversion (== rule argument from pandas.DataFrame.resample())
         frequency at which the dataset shall be interpolated (original values are added to resampled dataframe)
     geometric : bool
-        if True, the geopontential height is calculated from the input altitude column and used for further calculations
+        if False, the geopontential height is calculated from the input altitude column and used for further calculations
     start : datetime object
         launch time of the radiosonde. should actually be present in dataframe??
         all P and z values until start will be overwritten with P0 and z0
