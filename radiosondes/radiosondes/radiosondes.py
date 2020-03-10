@@ -31,6 +31,13 @@ from ..plot_sc.plot_building import make_one_spine_visible
 
 
 def get_idx_col_from_parse_dates(parse_dates):
+    """
+    checks, if input is a list of lists, in order to return the new joined column name.
+    
+    This function helps to identify the new column name, if a file is read in via pandas and a datetime index is created from multiple columns.
+    :param parse_dates: either a list containing a column name or a list of lists containing multiple column names
+    :return: a list containing a string - it's the new column name (or the input column name, if it was only one)
+    """
     if type(parse_dates) != bool:
         if type(parse_dates[0]) == list:
             return '_'.join(parse_dates[0])
@@ -41,6 +48,25 @@ def get_idx_col_from_parse_dates(parse_dates):
 
 
 def get_kwarg_from_file(path, kwarg):
+    """
+    search a file for a keyword and return the argument.
+
+    This function reads the file line per line as strings and looks for the first occurance of kwarg.
+    The respective linestring is split with the regular expression ': \s*' to remove whitespaces between kwarg and arg.
+    
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        path to the file to be searched.
+    kwarg : str
+        keyword you are looking for.
+
+    Returns
+    -------
+    arg : str
+        argument of the keyword
+
+    """
     try:
         with open(path, 'r') as f:
             for l in f:
@@ -54,8 +80,62 @@ def get_kwarg_from_file(path, kwarg):
 
 
 class RS_calcP(object):
+    """
+    Basic RS class without reading functionality. Provides pressure calculation customization options. 
+    
+    This basic class does not function on its own. An instance variable self.df (pandas.DataFrame) needs to be created e.g. from a subclass.
+    When calling the calssmethod calculation(), an instance of the class P_From_GPS_T_RH is added to the instance variables.
+    
+    Parameters:
+    -----------
+    P0 : float
+        ground pressure at the launching site at launch time
+    z0 : float
+        height above sea level at launching site
+    mirror : bool
+        only take the ascent data and use it to construct an artifical descent from ascent data. In this case the descent takes as long as the ascent!
+    P_Calc : bool
+        choose, if the classmethod calculation() is called upon instance creation
+    ipol : True, 'combined' or False
+        choose interpolation method to fill data gaps
+    freq : string
+        the offset string or object representing target conversion (== rule argument from pandas.DataFrame.resample())
+        frequency at which the dataset shall be interpolated (original values are added to resampled dataframe)
+    geometric : bool
+        if True, the geopontential height is calculated from the input altitude column and used for further calculations
+    start : datetime object
+        launch time of the radiosonde. should actually be present in dataframe??
+        all P and z values until start will be overwritten with P0 and z0
+    cols_in : dict
+        specify input columns for calculation (look into your file)
+        cols_in = {'z':{'col':'<column name>',
+                              'unit':'[m]'},
+                         'RH':{'col':'<column name>',
+                               'unit':'[%]'},
+                         'T':{'col':'<column name>',
+                              'unit':'[°C]'}
+    cols_out : dict
+        specify output column names
+        cols_out = {'P':    {'col':'P', #same name needed for initialization in radiosondes.py
+                             'unit':'[hPa]'},
+                    'z_geopot':{'col':'geopotential altitude',
+                                'unit':'[m]'},
+                    'Tv':      {'col':'Tv',
+                                'unit':'[K]'}}
+    drop : string or list of strings or False
+        provide column names that shall be treated with the drop_outliers() method
+    dirksenTv : bool
+        True: use Tv calculation method based on Dirksen et al. 2014; direct Tv_avg calculation with p_avg = sqrt(p_(k+1) * p_(k))
+        False: calculate Tv_avg from (Tv_(k+1) + Tv_(k) / 2
+    kwargs : 
+        additional keywordarguments that will be passed to P_From_GPS_T_RH. Not quite sure if that's neccessary and actually works.
+    """
 
     def __init__(self, P0=1013.15, z0=0.0, mirror=False, P_Calc=True, ipol='combined', freq='S', geometric=True, start=False, cols_in={}, cols_out={}, drop=False, dirksenTv=True,**kwargs): #geometric: treat as is: True, calc geopotential: False
+        """
+        constructor of RS_calcP       
+        """
+        
         self.mirror = mirror
         self.P_Calc = P_Calc
         self.ipol = ipol
@@ -93,6 +173,21 @@ class RS_calcP(object):
 
 
     def calculation(self, drop=False, **kwargs):
+        """
+        initialize P_From_GPS_T_RH from instance variables and calculate new pressure
+
+        Parameters
+        ----------
+        drop : TYPE, optional
+            DESCRIPTION. The default is False.
+        **kwargs : TYPE
+            DESCRIPTION.
+
+        Returns
+        -------
+        None.
+
+        """
         #prepare dataframe for P update
         #self.df.rename(columns={'P':'P_old'}, inplace=True) #get this from a dict
         # self.df['P'] = np.full(self.df.shape[0], np.NaN) #initialize empty P column
