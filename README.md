@@ -3,7 +3,7 @@ tool for calculating pressure from temperature, relative humidity and GPS data
 
 ### Usage
 you can install this package in a new environment or use the parent-folder (the one containing setup.py) as working directory.
-I would rather use the wokring directory approach until now.
+I would rather use the wokring directory approach so far.
 
 `from datetime import datetime`\
 `from radiosondes.radiosondes.radiosondes import RS_Trainou2019`\
