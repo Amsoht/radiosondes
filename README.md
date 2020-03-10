@@ -5,7 +5,7 @@ tool for calculating pressure from temperature, relative humidity and GPS data
 you can install this package in a new environment or use the parent-folder (the one containing setup.py) as working directory.
 I would rather use the wokring directory approach until now.
 
-`from datetime import datetime`
+`from datetime import datetime`\
 `from radiosondes.radiosondes.radiosondes import RS_Trainou2019`\
 `path = r"<path-to-your-radiosonde-input-file"`\
 `P0 = <launch pressure>`\
