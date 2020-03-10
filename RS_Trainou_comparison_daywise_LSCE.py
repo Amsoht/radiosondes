@@ -34,13 +34,6 @@ import matplotlib.pyplot as plt
 from radiosondes.radiosondes.radiosondes import RS_Trainou2019, comparison_RS
 
 
-#read in data and provide base values for P calculation
-RS_paths = [
-            r"C:\Trainou_2019\radiosonde\from_Thomas_20200220v2\AC_TRN_RINGO_20190612_003_withP.mto",
-            r"C:\Trainou_2019\radiosonde\from_Thomas_20200220v2\AC_TRN_RINGO_20190617_009_withP.mto",
-            r"C:\Trainou_2019\radiosonde\from_Thomas_20200220v2\AC_TRN_RINGO_20190618_015_withP.mto"
-            ]
-
 RS_old_paths = [
             r"C:\Users\Thomas Wagenhäuser\Dropbox\Trainou_campaign_2019\Radiosonde\LSCE_M10\AC_TRN_RINGO_20190612_003.mto",
             r"C:\Users\Thomas Wagenhäuser\Dropbox\Trainou_campaign_2019\Radiosonde\LSCE_M10\AC_TRN_RINGO_20190617_009.mto",
@@ -86,7 +79,7 @@ method_list = get_RSmethods(RS_methods)
 
 
 RS_daylist = []
-for path, P0, z0, start, path_old in zip(RS_paths, P0s, z0s, starts, RS_old_paths):
+for P0, z0, start, path_old in zip(P0s, z0s, starts, RS_old_paths):
     RS_list = []
     for mirror, ipol in method_list:
         RS = RS_Trainou2019(path=path_old, delim=' ', P0=P0, z0=z0, mirror=mirror, P_Calc=False, ipol=ipol, geometric=False, dirksenTv=True, start=start)
