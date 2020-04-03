@@ -14,6 +14,7 @@ ToDo:
 -move asc_mirror() to manip folder?
 -support df without time information (only z profile)
 """
+import sys
 import numpy as np
 import pandas as pd
 import datetime as dt
@@ -21,8 +22,11 @@ from datetime import datetime, timedelta
 import pathlib
 from metpy.calc import height_to_geopotential as h_t_g
 from metpy.units import units
+import scipy.signal
 import random
 from random import randrange
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 from ..plot_sc.plot_building import make_one_spine_visible
 
@@ -73,7 +77,7 @@ class P_From_GPS_T_RH(object):
                     'z_geopot':{'col':'geopotential altitude',
                                 'unit':'[m]'}
                     }""" #maybe create dict rom DataFrame from Excel-csv file
-
+        self.mirror = mirror
         self.P0 = P0
         self.z0 = z0
         self.start = start
@@ -120,6 +124,8 @@ class P_From_GPS_T_RH(object):
     def calc_Tv_from_e(self, rh, e_s, press, temp, mode='std'):
         """Calculate Tv from water vapour pressure, temperature [K] and pressure [hPa]"""
         e = rh*e_s
+        if mode == True:
+            mode = 'std'
         if mode == 'std':
             Tv = temp/(1-e/press*(1-self.eps))
         elif mode == 'Modem':
@@ -159,8 +165,8 @@ class P_From_GPS_T_RH(object):
               '...',
               sep='\n')
 
-        #resample (timebased):
-        if expol: #maybe give the option to provide pressure or Temperature value
+        # resample (timebased):
+        if expol:  # maybe give the option to provide pressure or Temperature value
                 try:
                     time, alt = expol
                     self.df.append(pd.DataFrame([alt], index=[time], columns=[self.cols_in['z']['col']]))
@@ -176,30 +182,32 @@ class P_From_GPS_T_RH(object):
             z_df = self.df[[key['col'] for var,key in self.cols_in.items()]] \
                     .groupby(self.cols_in['z']['col']).mean()
 
-                    # asc_z_df = asc_df.reset_index().set_index('GPS_ALT')
-                    # des_z_df = des_df.reset_index().set_index('GPS_ALT')
-                    # comb_z_df = df.groupby('GPS_ALT').mean()
-                    #reidx_asc_df = z_df.reindex(asc_df['GPS_ALT'].values)
+            # print('\n\nz_df:\n', z_df.reset_index().describe())
 
-            #create a time and GPS_ALT dataframe that is resampled
+
+            # create a time and GPS_ALT dataframe that is resampled
             resam_df = self.df[[self.cols_in['z']['col']]].resample(freq).mean().interpolate()
-            # print(f'\n--------\nresam_df.shape now is: {resam_df.shape}\n--------\n')
 
-            #reindex altitude-grouped dataframe by resampled altitude values (i.e. time based)
-            reidx_df = z_df.reindex(resam_df[self.cols_in['z']['col']].values) #reindex to resampled z
-            reidx_df = pd.concat([reidx_df, z_df], axis=0).sort_index() #merge reindexed z_df with original z_df, in order to preserve records between resampling timestamps
-            reidx_df = reidx_df[~reidx_df.index.duplicated(keep='first')] #drop duplicates, that were caused by this merge
+            # print('\n\nresam_df:\n', resam_df.describe())
 
-            #fill nan values
+
+            # reindex altitude-grouped dataframe by resampled altitude values (i.e. time based)
+            reidx_df = z_df.reindex(resam_df[self.cols_in['z']['col']].values)  # reindex to resampled z
+            reidx_df = pd.concat([reidx_df, z_df], axis=0).sort_index()  # merge reindexed z_df with original z_df, in order to preserve records between resampling timestamps
+            reidx_df = reidx_df[~reidx_df.index.duplicated(keep='first')]  # drop duplicates, that were caused by this merge
+
+            # print('\n\nreidx_df:\n', reidx_df.reset_index().describe())
+
+            # fill nan values
             ipol_reidx_df = reidx_df.interpolate()
 
-            #merge combined and interpolated data to Date_Time by altitude
+            # merge combined and interpolated data to Date_Time by altitude
             idx_name = resam_df.index.name
             ipol_resam_df = resam_df.reset_index()\
                                     .merge(ipol_reidx_df, on=self.cols_in['z']['col'], how='left', suffixes=(False,False))\
                                     .set_index(idx_name)
-            #this should work. maybe interpolate until ground level?
-            # print(f'\n--------\nipol_resam_df.shape now is: {ipol_resam_df.shape}\n--------\n')
+            # this should work. maybe interpolate until ground level?
+            # print('\n\nipol_resam_df:\n', ipol_resam_df.describe())
 
         else:
             ipol_resam_df = resam_df.interpolate()
@@ -207,7 +215,7 @@ class P_From_GPS_T_RH(object):
         # print(f'\n--------\nipol_resam_df.shape now is: {ipol_resam_df.shape}\n--------\n')
 
         print('Done interpolating!\n')
-        return ipol_resam_df #overwrite previous dataframe (be careful with non-profile-data like lat and lon!) #TODO
+        return ipol_resam_df
 
 
 
@@ -219,10 +227,14 @@ class P_From_GPS_T_RH(object):
         press2 = [press[1]]
         if dirksenTv:
             T_avg = np.array(temp).mean()
-            e_s_avg = self.calc_esat(T_avg-273.15)
             RH_avg = np.array(rh).mean()
             P_avg = np.sqrt(press[0]*press2[0])
-            Tv = [self.calc_Tv_from_e(RH_avg, e_s_avg, P_avg, T_avg)]*2
+            if dirksenTv == 'Modem':
+                T_avg = temp[1]
+                RH_avg = rh[1]
+                P_avg = press[0]
+            e_s_avg = self.calc_esat(T_avg-273.15)
+            Tv = [self.calc_Tv_from_e(RH_avg, e_s_avg, P_avg, T_avg, mode=dirksenTv)]*2
         else:
             e_s = [self.calc_esat(temp_i-273.15) for temp_i in temp]
             Tv = [self.calc_Tv_from_e(rh[0], e_s_i, press_i, temp_i) for press_i, temp_i, e_s_i in zip(press,temp, e_s)] #
@@ -239,8 +251,9 @@ class P_From_GPS_T_RH(object):
             press2.append(press[0]*np.exp((z[0]-z[1])*self.g/(self.Rd*Tv_avg)))
 
             if dirksenTv:
-                P_avg = np.sqrt(press[0]*press2[i+1])
-                Tv.append(self.calc_Tv_from_e(RH_avg, e_s_avg, P_avg, T_avg))
+                if dirksenTv != 'Modem':
+                    P_avg = np.sqrt(press[0]*press2[i+1])
+                Tv.append(self.calc_Tv_from_e(RH_avg, e_s_avg, P_avg, T_avg, mode=dirksenTv))
             else:
                 Tv.append(self.calc_Tv_from_e(rh[1], e_s[1], press2[i+1], temp[1]))
             i += 1
@@ -263,19 +276,29 @@ class P_From_GPS_T_RH(object):
                 print(f"An Error occured: {excp}\nCouldn't find starting time index. Proceeding with only the first record being overwritten...\n")
         if ipol:
             self.df_orig = self.df.copy()
-            self.df = self.interpol_data_gaps(mode=ipol, freq=freq) #overwrites self.df
+            self.df = self.interpol_data_gaps(mode=ipol, freq=freq)  # overwrites self.df
 
-        #drop NaN rows, where T and RH is NaN
+        # drop NaN rows, where T and RH is NaN
         self.df.dropna(how='all', subset=[self.cols_in[var]['col'] for var in ['T','RH','z']], inplace=True)
 
-        self.df[self.cols_out['P']['col']] = np.full(self.df.shape[0], np.NaN) #initialize empty P column
-        self.df.loc[self.df.index[0],self.cols_out['P']['col']] = self.P0 #enter pressure start value
-        self.df.loc[self.df.index[0],self.cols_in['z']['col']] = self.z0 #enter altitude start value
+        self.df[self.cols_out['P']['col']] = np.full(self.df.shape[0], np.NaN)  # initialize empty P column
+        self.df.loc[self.df.index[0],self.cols_out['P']['col']] = self.P0  # enter pressure start value
+        self.df.loc[self.df.index[0],self.cols_in['z']['col']] = self.z0  # enter altitude start value
 
+        # if not self.mirror:  # uncomment to plot temperature data; p.1/2
+        #     plt.figure()
+        #     plt.plot(self.df[self.cols_in['T']['col']].values + 273.15, self.df[self.cols_in['z']['col']].interpolate().values, 'o', label='A')
 
+        press = self.df[self.cols_out['P']['col']].values  # .interpolate().values #TODO: load column names from a dictionary
+        temp = self.df[self.cols_in['T']['col']].interpolate().values + 273.15  # in K
+        # temp = scipy.signal.savgol_filter(temp, 11, 3)  # Savitzky-Golay filter/smoothing of temperature data.
 
-        press = self.df[self.cols_out['P']['col']].values #.interpolate().values #TODO: load column names from a dictionary
-        temp = self.df[self.cols_in['T']['col']].interpolate().values + 273.15 #in K
+        # if not self.mirror:  # uncomment to plot temperature data; p.2/2
+        #     plt.plot(temp, self.df[self.cols_in['z']['col']].interpolate().values, 'o', label='B')
+        #     plt.title('T time series for P calculation. Ipol: {}'.format(ipol))
+        #     plt.legend()
+        #     plt.show()
+
         rh = self.df[self.cols_in['RH']['col']].interpolate().apply(lambda x: 100 if x > 100 else x) #account for wrong RH values above 100%
         rh = rh.values / 100 #to account for %
         # e_s = pd.DataFrame(temp-273.15).iloc[:,0].apply(self.calc_esat).values #write a function to calculate this
@@ -289,12 +312,12 @@ class P_From_GPS_T_RH(object):
         Tv = [np.NaN]*self.df.shape[0]
 
         if (True in np.isnan(press)):
-            for i, press_i in enumerate(press[:-1]):
+            for i, press_i in enumerate(tqdm(press[:-1])):
                 #print(f'press: {press_i}\ntemp: {temp[i:i+2]}\nrh: {rh[i:i+2]}\ne_s: {e_s[i:i+2]}')
                 press[i+1], n_iterations_Tv[i+1], Tv[i+1] = self.calc_press([press_i]*2, alt[i:i+2], temp[i:i+2], rh[i:i+2], dirksenTv=dirksenTv)
 
         else:
-            for i in range(len(press)-1):
+            for i in tqdm(range(len(press)-1)):
                 press[i+1], n_iterations_Tv[i+1], Tv[i+1] = self.calc_press(press[i:i+2], alt[i:i+2], temp[i:i+2], rh[i:i+2], dirksenTv=dirksenTv)
 
         self.df[self.cols_out['P']['col']] = press #rename this? in order to keep old and new P values. check for unique values?
@@ -309,12 +332,12 @@ class P_From_GPS_T_RH(object):
         #print(f'\n{self.df}')
         print('Done calculating pressure!\n')
 
-#check units (Temperature etc.)
-#add Arduino pressure readings, DONE
-#add legend DONE
-#add humidity DONE
-#leave out humidity above 12 km? DONE 2020 02 04: better keep those values?
-#mirror ascent and calculate DONE
+# check units (Temperature etc.) DONE
+# add Arduino pressure readings, DONE
+# add legend DONE
+# add humidity DONE
+# leave out humidity above 12 km? DONE 2020 02 04: better keep those values?
+# mirror ascent and calculate DONE
 
 #%% test
 if __name__ == '__main__':
