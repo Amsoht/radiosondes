@@ -33,7 +33,7 @@ from ..plot_sc.plot_building import make_one_spine_visible
 def get_idx_col_from_parse_dates(parse_dates):
     """
     checks, if input is a list of lists, in order to return the new joined column name.
-    
+
     This function helps to identify the new column name, if a file is read in via pandas and a datetime index is created from multiple columns.
     :param parse_dates: either a list containing a column name or a list of lists containing multiple column names
     :return: a list containing a string - it's the new column name (or the input column name, if it was only one)
@@ -53,7 +53,7 @@ def get_kwarg_from_file(path, kwarg):
 
     This function reads the file line per line as strings and looks for the first occurance of kwarg.
     The respective linestring is split with the regular expression ': \s*' to remove whitespaces between kwarg and arg.
-    
+
     Parameters
     ----------
     path : str or pathlib.Path
@@ -81,11 +81,11 @@ def get_kwarg_from_file(path, kwarg):
 
 class RS_calcP(object):
     """
-    Basic RS class without reading functionality. Provides pressure calculation customization options. 
-    
+    Basic RS class without reading functionality. Provides pressure calculation customization options.
+
     This basic class does not function on its own. An instance variable self.df (pandas.DataFrame) needs to be created e.g. from a subclass.
     When calling the calssmethod calculation(), an instance of the class P_From_GPS_T_RH is added to the instance variables.
-    
+
     Parameters:
     -----------
     P0 : float
@@ -127,15 +127,15 @@ class RS_calcP(object):
     dirksenTv : bool
         True: use Tv calculation method based on Dirksen et al. 2014; direct Tv_avg calculation with p_avg = sqrt(p_(k+1) * p_(k))
         False: calculate Tv_avg from (Tv_(k+1) + Tv_(k) / 2
-    kwargs : 
+    kwargs :
         additional keywordarguments that will be passed to P_From_GPS_T_RH. Not quite sure if that's neccessary and actually works.
     """
 
     def __init__(self, P0=1013.15, z0=0.0, mirror=False, P_Calc=True, ipol='combined', freq='S', geometric=True, start=False, cols_in={}, cols_out={}, drop=False, dirksenTv=True,**kwargs): #geometric: treat as is: True, calc geopotential: False
         """
-        constructor of RS_calcP       
+        constructor of RS_calcP
         """
-        
+
         self.mirror = mirror
         self.P_Calc = P_Calc
         self.ipol = ipol
@@ -197,8 +197,7 @@ class RS_calcP(object):
             try:
                 if type(drop) != list:
                     drop = [drop]
-                for var in drop:
-                    self.drop_outliers(var)
+                self.drop_outliers(drop)
             except Exception as excp:
                 print(f"\n\nError: {excp}\nAn error occured while trying to drop outliers. Check 'drop' keyword.")
         #maybe add a Temperature start value (so far taken from radiosonde)

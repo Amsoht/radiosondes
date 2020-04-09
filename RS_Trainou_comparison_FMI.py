@@ -85,7 +85,7 @@ for P0, z0, start, path_old in zip(P0s, z0s, starts, RS_old_paths):
         # RS.df.rename(columns={'P_old':'P_LSCE'}, inplace=True)
         # RS_old = RS_Trainou2019(path_old, delim=' ', init_P_calc=False)
         # RS.df = RS.df.merge(RS_old.df['P_old'], left_index=True, right_index=True, how='left')
-        RS.calculation()  # start pressure calculation here
+        RS.calculation(drop='RH')  # start pressure calculation here
         RS.df = RS.df[~RS.df.index.duplicated(keep='first')]  # "~" bitwise operator, turns False into True and vice versa
         RS_list.append(RS)
     RS_daylist.append(RS_list)
