@@ -65,7 +65,7 @@ titles = [
 
 #prepare plotting different methods for each flightday
 RS_methods = {'mirror':[True, False], 'ipol':['combined', True, False]}
-rndm_missing = True
+rndm_missing = False
 
 def get_RSmethods(RS_dict):
     ls=[]
@@ -108,8 +108,8 @@ saveplots = pathlib.Path(r"C:\Trainou_2019\radiosonde\Joram_Mail_20200401")
 saveplots = False
 
 # Plots relative delta P instead of absolute delta P?
-relP = True
-T_RH_z_plot=True
+relP = False
+T_RH_z_plot=False
 dP_plot=True
 P_plot=True
 
