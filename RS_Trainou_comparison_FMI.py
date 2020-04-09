@@ -94,7 +94,7 @@ for P0, z0, start, path_old in zip(P0s, z0s, starts, RS_old_paths):
 #############################################################################
 # Save plots?
 saveplots = pathlib.Path(r"C:\Trainou_2019\radiosonde\FMI_20200409")
-saveplots = False  # if you want to save the plots: comment this out! dont overwrite the path with a True value!
+# saveplots = False  # if you want to save the plots: comment this out! dont overwrite the path with a True value!
 
 # Plots relative delta P instead of absolute delta P?
 relP = False
@@ -131,8 +131,8 @@ for path in Arduino_paths:
     Arduino_dfs.append(df)
 
 titles = [
-           'GUF003 June 12\nRS006',
-          'GUF003 June 17\nRS014'
+           'FMI June 12\nRS006',
+          'FMI June 17\nRS014'
           ]
 if relP:
     yname = r'$\frac{\Delta P}{P_{static}}$ [%]'
@@ -209,23 +209,59 @@ save_df = comparison_RS(RS_daylist, method_list, Arduino_dfs,
     # axes[3].legend()
 
 # %% export data
-save_df.keys()
-dir(save_df['m_dfs'])
-dir(save_df['tidy_dfs'])
+export_csv = False
 
-len(save_df['m_dfs'])
-len(save_df['tidy_dfs'])
+if export_csv is True:
+    save_df.keys()
+    dir(save_df['m_dfs'])
+    dir(save_df['tidy_dfs'])
 
-type(Arduino_dfs[1].index[0])
-len(Arduino_dfs[1].columns)
-len(col_names) - 6
+    len(save_df['m_dfs'])
+    len(save_df['tidy_dfs'])
 
-# only use the seconds df (June 17, RS014)
-m_df = save_df['m_dfs'][1]
-tidy_df = save_df['tidy_dfs'][1]
+    type(Arduino_dfs[1].index[0])
+    len(Arduino_dfs[1].columns)
+    len(col_names) - 6
 
-m_df[4].columns
-tidy_df[4].columns
+    # only use the seconds df (June 17, RS014)
+    m_df = save_df['m_dfs'][1]
+    tidy_df = save_df['tidy_dfs'][1]
 
-df = RS_daylist[1][4].df  # this should be the not mirrored - ipol True DataFrame; see method_list[4]
-print(df.columns)
+    m_df[4].columns
+    tidy_df[4].columns
+
+    df = RS_daylist[1][4].df  # this should be the not mirrored - ipol True DataFrame; see method_list[4]
+    print(df.columns)
+    df.index.name
+    _df = df.copy()
+    df = _df.copy()
+    df.head(2)
+    df.reset_index(inplace=True)
+    df.loc[:, 'Date'] = df.loc[:, 'Date_Time'].dt.date
+    df.loc[:, 'Time'] = df.loc[:, 'Date_Time'].dt.time
+
+    out_cols = ['Date', 'Time', 'T', 'RH', 'DP', 'Esat', 'Tin', 'Batt', 'Alt', 'WindSpeed', 'WindDir', 'VertSpeed', 'Lat', 'Lon', 'sat', 'SN', 'P']
+    out_file = r"C:\Trainou_2019\radiosonde\FMI_20200409\AC_TRN_RINGO_20190617_014_recalcP_v202004091530.mto"
+    df.to_csv(out_file, sep='\t', index=False, columns=out_cols, na_rep='NA', float_format='%.2f')
+
+
+    # use the first df (June 16, RS006)
+    m_df = save_df['m_dfs'][0]
+    tidy_df = save_df['tidy_dfs'][0]
+
+    m_df[4].columns
+    tidy_df[4].columns
+
+    df = RS_daylist[0][4].df  # this should be the not mirrored - ipol True DataFrame; see method_list[4]
+    print(df.columns)
+    df.index.name
+    _df = df.copy()
+    df = _df.copy()
+    df.head(2)
+    df.reset_index(inplace=True)
+    df.loc[:, 'Date'] = df.loc[:, 'Date_Time'].dt.date
+    df.loc[:, 'Time'] = df.loc[:, 'Date_Time'].dt.time
+
+    out_cols = ['Date', 'Time', 'T', 'RH', 'DP', 'Esat', 'Tin', 'Batt', 'Alt', 'WindSpeed', 'WindDir', 'VertSpeed', 'Lat', 'Lon', 'sat', 'SN', 'P']
+    out_file = r"C:\Trainou_2019\radiosonde\FMI_20200409\AC_TRN_RINGO_20190616_006_recalcP_v202004091645.mto"
+    df.to_csv(out_file, sep='\t', index=False, columns=out_cols, na_rep='NA', float_format='%.2f')
